@@ -1,0 +1,25 @@
+{
+  "name": "alphafix",
+  "version": "1.0.0",
+  "description": "Fix colors in invisible pixels for good texture sampling",
+  "main": "index.js",
+  "keywords": [
+    "glov-build",
+    "glov",
+    "glovjs",
+    "pngjs",
+    "png"
+  ],
+  "author": "Jimb Esser (https://github.com/Jimbly)",
+  "homepage": "https://github.com/Jimbly/alphafix#readme",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:Jimbly/npm-publish.git"
+  },
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}
