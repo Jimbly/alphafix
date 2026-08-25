@@ -2,14 +2,13 @@ const assert = require('assert');
 
 const { floor, round } = Math;
 
-function alphafixJS(alpha_channel, pngin) {
+function alphafixJS(alpha_channel, width, height, data) {
   let alpha_channels = [];
   for (let ii = 0; ii < 4; ++ii) {
     if (alpha_channel & (1 << ii)) {
       alpha_channels.push(ii);
     }
   }
-  let { width, height, data } = pngin;
   assert.equal(width * height * 4, data.length);
   let dim = width * height;
   let is_solid = new Uint8Array(dim);
@@ -27,7 +26,7 @@ function alphafixJS(alpha_channel, pngin) {
       todo_buf[todo_end++] = idx + 1;
       queued[idx + 1] = 1;
     }
-    if (idx > width && !queued[idx - width]) {
+    if (idx >= width && !queued[idx - width]) {
       todo_buf[todo_end++] = idx - width;
       queued[idx - width] = 1;
     }
@@ -55,7 +54,6 @@ function alphafixJS(alpha_channel, pngin) {
     // completely solid
     return;
   }
-  let diff = false;
   let solid_mark = [];
   let loop_end = todo_end;
   while (todo_start < todo_end) {
@@ -111,19 +109,15 @@ function alphafixJS(alpha_channel, pngin) {
     b = round(b/c);
     a = round(a/c);
     if (!(alpha_channel & 1)) {
-      diff = (diff || data[idx*4] !== r);
       data[idx*4] = r;
     }
     if (!(alpha_channel & 2)) {
-      diff = (diff || data[idx*4+1] !== g);
       data[idx*4+1] = g;
     }
     if (!(alpha_channel & 4)) {
-      diff = (diff || data[idx*4+2] !== b);
       data[idx*4+2] = b;
     }
     if (!(alpha_channel & 8)) {
-      diff = (diff || data[idx*4+3] !== a);
       data[idx*4+3] = a;
     }
     addNeighbors(idx);
@@ -131,7 +125,18 @@ function alphafixJS(alpha_channel, pngin) {
   }
 }
 
-module.exports = function alphafix(opts) {
+let alphafix;
+let is_native = false;
+try {
+  // eslint-disable-next-line global-require
+  alphafix = require('node-gyp-build')(__dirname).alphafix;
+  is_native = true;
+} catch (e) {
+  alphafix = alphafixJS;
+}
+
+
+module.exports = function alphafixWrap(opts) {
   let { alpha_channel, image } = opts;
   if (!alpha_channel) {
     alpha_channel = 8;
@@ -141,5 +146,7 @@ module.exports = function alphafix(opts) {
   assert(image.height && typeof image.height === 'number');
   assert(image.data && (image.data instanceof Buffer || image.data instanceof Uint8Array));
 
-  return alphafixJS(alpha_channel, image);
+  return alphafix(alpha_channel, image.width, image.height, image.data);
 };
+
+module.exports.is_native = is_native;

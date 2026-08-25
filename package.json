@@ -17,9 +17,21 @@
     "url": "git@github.com:Jimbly/npm-publish.git"
   },
   "scripts": {
-    "test": "node test/test.js"
+    "install": "true || cd .",
+    "build": "prebuildify --napi --all",
+    "test": "node-gyp configure && node-gyp build && node test/test.js"
   },
   "license": "MIT",
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "node-gyp-build": "^4.8.4"
+  },
+  "devDependencies": {
+    "node-addon-api": "^3.0.0",
+    "prebuildify": "^6.0.1"
+  },
+  "binary": {
+    "napi_versions": [
+      3
+    ]
+  }
 }

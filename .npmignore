@@ -1,4 +1,8 @@
+node_modules/
+build/
 eslint.config.mjs
 .editorconfig
 test/*
-*.sublime*
+npm-debug.log
+*.sublime-workspace
+.DS_Store

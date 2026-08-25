@@ -1,6 +1,8 @@
 const assert = require('assert');
 const alphafix = require('../');
 
+console.log(`Using ${alphafix.is_native ? 'native' : 'JS'} implementation`);
+
 console.log('Checking basic functionality...');
 let imgdata = Buffer.from(new Uint32Array([
   0x00000000, 0x00000000, 0x00000000,
