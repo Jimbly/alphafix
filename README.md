@@ -19,10 +19,9 @@ let imgdata = Buffer.from(new Uint32Array([
   0xFF00007f, 0xFF0000ff, 0x00000000,
   0x00000000, 0x00000000, 0x00000000,
 ]).buffer);
-imgdata.swap32(); // expect byte-order of R, G, B, A
 
 alphafix({
-  alpha_channel: 8, // bitmask, 1=R, etc; default=A
+  alpha_channel: 1, // bitmask, 1=first channel (e.g. ABGR), 8=last (e.g. RGBA), etc
   image: {
     width: 3,
     height: 3,

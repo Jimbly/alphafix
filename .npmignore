@@ -3,6 +3,8 @@ build/
 eslint.config.mjs
 .editorconfig
 test/*
+OSXBuildNode/
 npm-debug.log
-*.sublime-workspace
+*.sublime*
 .DS_Store
+*.cmd
