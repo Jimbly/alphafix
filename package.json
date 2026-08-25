@@ -18,7 +18,7 @@
   },
   "scripts": {
     "install": "true || cd .",
-    "build": "prebuildify --napi --all",
+    "build": "prebuildify --napi",
     "test": "node-gyp configure && node-gyp build && node test/test.js"
   },
   "license": "MIT",
