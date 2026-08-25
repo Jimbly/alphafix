@@ -9,7 +9,7 @@
         "<!@(node -p \"require('node-addon-api').include\")"
       ],
       'defines': [ 'NAPI_DISABLE_CPP_EXCEPTIONS' ],
-      'comment': "below enables max optimzation (didn't help)",
+      'comment': "below enables max optimization (didn't help)",
       "conditions": [
         ["OS=='linux'", {
           "cflags": [ "-O3", "-flto", "-funroll-loops", "-fomit-frame-pointer" ],
