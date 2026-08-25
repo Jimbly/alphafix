@@ -57,11 +57,6 @@ void alphafixImpl(int alpha_channel, uint32_t width, uint32_t height, unsigned c
         }
     }
 
-    if (!todo_end) {
-        // completely solid
-        return;
-    }
-
     size_t loop_end = todo_end;
 
     while (todo_start < todo_end) {
