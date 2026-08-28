@@ -1,6 +1,6 @@
 {
   "name": "alphafix",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Fix colors in invisible pixels for good texture sampling",
   "main": "index.js",
   "keywords": [
@@ -23,7 +23,8 @@
   },
   "license": "MIT",
   "dependencies": {
-    "node-gyp-build": "^4.8.4"
+    "node-gyp-build": "^4.8.4",
+    "pngjs": "^7.0.0"
   },
   "devDependencies": {
     "node-addon-api": "^3.0.0",

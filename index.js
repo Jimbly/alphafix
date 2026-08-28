@@ -2,14 +2,18 @@ const assert = require('assert');
 
 const { floor, round } = Math;
 
-function alphafixJS(alpha_channel, width, height, data) {
+function alphafixJS(alpha_channel, width, height, bpp, data) {
+  if (alpha_channel === 8 && bpp < 4) {
+    return false;
+  }
   let alpha_channels = [];
   for (let ii = 0; ii < 4; ++ii) {
     if (alpha_channel & (1 << ii)) {
+      assert(ii < bpp);
       alpha_channels.push(ii);
     }
   }
-  assert.equal(width * height * 4, data.length);
+  assert.equal(width * height * bpp, data.length);
   let dim = width * height;
   let is_solid = new Uint8Array(dim);
   let queued = new Uint8Array(dim);
@@ -39,7 +43,7 @@ function alphafixJS(alpha_channel, width, height, data) {
     let solid = false;
     for (let ii = 0; ii < alpha_channels.length; ++ii) {
       let offs = alpha_channels[ii];
-      if (data[idx*4 + offs]) {
+      if (data[idx*bpp + offs]) {
         solid = true;
         break;
       }
@@ -52,10 +56,11 @@ function alphafixJS(alpha_channel, width, height, data) {
   }
   if (!todo_end) {
     // completely solid
-    return;
+    return false;
   }
   let solid_mark = [];
   let loop_end = todo_end;
+  let diff = false;
   while (todo_start < todo_end) {
     if (todo_start === loop_end) {
       for (let ii = 0; ii < solid_mark.length; ++ii) {
@@ -70,83 +75,204 @@ function alphafixJS(alpha_channel, width, height, data) {
     }
     let y = floor(idx / width);
     let x = idx - y * width;
+    let rgba = [0, 0, 0, 0];
     let c = 0;
-    let r = 0;
-    let g = 0;
-    let b = 0;
-    let a = 0;
-    if (x > 0 && is_solid[idx - 1]) {
-      r += data[idx*4-4];
-      g += data[idx*4-3];
-      b += data[idx*4-2];
-      a += data[idx*4-1];
+    function addColor(idx) {
+      for (let offs=0; offs < bpp; ++offs) {
+        rgba[offs] += data[idx * bpp + offs];
+      }
       c++;
     }
-    if (x < width-1 && is_solid[idx + 1]) {
-      r += data[idx*4+4];
-      g += data[idx*4+5];
-      b += data[idx*4+6];
-      a += data[idx*4+7];
-      c++;
+    if (x > 0 && is_solid[idx - 1]) {
+      addColor(idx - 1);
+    }
+    if (x < width - 1 && is_solid[idx + 1]) {
+      addColor(idx + 1);
     }
     if (y > 0 && is_solid[idx - width]) {
-      r += data[(idx-width)*4];
-      g += data[(idx-width)*4+1];
-      b += data[(idx-width)*4+2];
-      a += data[(idx-width)*4+3];
-      c++;
+      addColor(idx - width);
     }
-    if (y < height-1 && is_solid[idx + width]) {
-      r += data[(idx+width)*4];
-      g += data[(idx+width)*4+1];
-      b += data[(idx+width)*4+2];
-      a += data[(idx+width)*4+3];
-      c++;
+    if (y < height - 1 && is_solid[idx + width]) {
+      addColor(idx + width);
     }
     assert(c);
-    r = round(r/c);
-    g = round(g/c);
-    b = round(b/c);
-    a = round(a/c);
-    if (!(alpha_channel & 1)) {
-      data[idx*4] = r;
-    }
-    if (!(alpha_channel & 2)) {
-      data[idx*4+1] = g;
-    }
-    if (!(alpha_channel & 4)) {
-      data[idx*4+2] = b;
-    }
-    if (!(alpha_channel & 8)) {
-      data[idx*4+3] = a;
+
+    for (let offs=0; offs < bpp; ++offs) {
+      if (!(alpha_channel & (1<<offs))) {
+        let effidx = idx * bpp + offs;
+        let newv = round(rgba[offs] / c);
+        if (diff) {
+          data[effidx] = newv;
+        } else if (data[effidx] !== newv) {
+          data[effidx] = newv;
+          diff = true;
+        }
+      }
     }
     addNeighbors(idx);
     solid_mark.push(idx);
   }
+  return diff;
 }
 
-let alphafix;
-let is_native = false;
-try {
-  // eslint-disable-next-line global-require
-  alphafix = require('node-gyp-build')(__dirname).alphafix;
-  is_native = true;
-} catch (e) {
-  alphafix = alphafixJS;
+let PNG;
+const PNG_GRAYSCALE = 0;
+const PNG_RGB = 2;
+const PNG_PALETTE = 3;
+const PNG_RGBA = 6;
+
+function pngReadJS(buf, force_bpp) {
+  let img = PNG.sync.read(buf);
+  let { width, height, data, bpp, colorType } = img;
+  let numpix = width * height;
+  assert.equal(numpix * 4, data.length);
+  if (force_bpp === 4) {
+    // we're good
+    bpp = 4; // possibly was 1/3, but handled in reading
+  } else if (force_bpp) {
+    // 1-3
+    let newdata = Buffer.alloc(force_bpp * numpix);
+    let skip = 4 - bpp;
+    for (let inidx = 0, outidx=0; inidx < data.length; ) {
+      for (let ii = 0; ii < bpp; ++ii) {
+        newdata[outidx++] = data[inidx++];
+      }
+      inidx += skip;
+    }
+    data = newdata;
+    bpp = force_bpp;
+  } else {
+    // shrink down to a 3 byte-per-pixel, etc, if that's what the format is
+    if (colorType === PNG_RGB || colorType === PNG_GRAYSCALE) {
+      let newdata = Buffer.alloc(bpp * numpix);
+      let skip = 4 - bpp;
+      for (let inidx = 0, outidx=0; inidx < data.length; ) {
+        for (let ii = 0; ii < bpp; ++ii) {
+          newdata[outidx++] = data[inidx++];
+        }
+        inidx += skip;
+      }
+      data = newdata;
+    } else if (colorType === PNG_PALETTE) {
+      bpp = 4;
+    } else if (colorType !== PNG_RGBA) {
+      assert(false, `Unhandled PNG colorType ${colorType}`);
+    }
+  }
+  return {
+    width,
+    height,
+    data,
+    bpp,
+  };
 }
 
+function pngWriteJS(width, height, bpp, data) {
+  let colorType = bpp === 4 ? PNG_RGBA : bpp === 3 ? PNG_RGB : PNG_GRAYSCALE;
+  let img;
+  if (bpp === 4) {
+    img = new PNG({ width: 1, height: 1, colorType });
+    img.width = width;
+    img.height = height;
+    img.data = data;
+  } else {
+    img = new PNG({ width, height, colorType });
+    if (!img.data) {
+      throw new Error(`Out of memory allocating ${width}x${height}x${bpp} PNG`);
+    }
+    let num_bytes = width * height * 4;
+    assert.equal(img.data.length, num_bytes);
+    let skip = 4 - bpp - 1;
+    for (let inidx = 0, outidx=0; inidx < data.length; ) {
+      for (let ii = 0; ii < bpp; ++ii) {
+        img.data[outidx++] = data[inidx++];
+      }
+      outidx += skip;
+      img.data[outidx++] = 255;
+    }
+  }
 
-module.exports = function alphafixWrap(opts) {
+  return PNG.sync.write(img);
+}
+
+let alphafixImpl;
+let pngReadImpl;
+let pngWriteImpl;
+let native = false;
+function reinit(force_js) {
+  try {
+    if (force_js) {
+      throw new Error('mocked native not found');
+    }
+    // eslint-disable-next-line global-require
+    let nativemod = require('node-gyp-build')(__dirname);
+    alphafixImpl = nativemod.alphafix;
+    pngReadImpl = nativemod.pngRead;
+    pngWriteImpl = nativemod.pngWrite;
+    native = true;
+  } catch (e) {
+    // eslint-disable-next-line global-require
+    PNG = require('pngjs').PNG;
+    alphafixImpl = alphafixJS;
+    pngReadImpl = pngReadJS;
+    pngWriteImpl = pngWriteJS;
+  }
+}
+reinit(false);
+
+function isInteger(v) {
+  return typeof v === 'number' && isFinite(v) && floor(v) === v;
+}
+
+function checkImageParam(img) {
+  assert(img);
+  let {
+    width,
+    height,
+    data,
+    bpp,
+  } = img;
+  assert(isInteger(width) && width > 0);
+  assert(isInteger(height) && height > 0);
+  assert(data && (data instanceof Buffer || data instanceof Uint8Array));
+  if (!bpp) {
+    bpp = img.bpp = data.length / (width * height);
+  }
+  assert(isInteger(bpp) && (bpp === 1 || bpp === 3 || bpp === 4));
+}
+
+function pngWrite(img) {
+  checkImageParam(img);
+  return pngWriteImpl(img.width, img.height, img.bpp, img.data);
+}
+
+function pngRead(buf, opts) {
+  assert(buf && (buf instanceof Buffer || buf instanceof Uint8Array));
+  assert.equal(buf.toString('binary', 0, 4), '\x89PNG');
+  let force_bpp = 0;
+  if (opts) {
+    assert.equal(typeof opts, 'object');
+    if (opts.bpp) {
+      assert(isInteger(opts.bpp));
+      force_bpp = opts.bpp;
+    }
+  }
+  return pngReadImpl(buf, force_bpp);
+}
+
+function alphafix(opts) {
   let { alpha_channel, image } = opts;
   if (!alpha_channel) {
     alpha_channel = 8;
   }
-  assert(image);
-  assert(image.width && typeof image.width === 'number');
-  assert(image.height && typeof image.height === 'number');
-  assert(image.data && (image.data instanceof Buffer || image.data instanceof Uint8Array));
+  checkImageParam(image);
+  return alphafixImpl(alpha_channel, image.width, image.height, image.bpp, image.data);
+}
 
-  return alphafix(alpha_channel, image.width, image.height, image.data);
+module.exports = {
+  native,
+  alphafix,
+  pngRead,
+  pngWrite,
+  reinit,
 };
-
-module.exports.is_native = is_native;
