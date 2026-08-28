@@ -12,7 +12,7 @@ Works with [pngjs](https://www.npmjs.com/package/pngjs) images or any `width`+`h
 
 API usage:
 ```javascript
-const alphafix = require('alphafix');
+const { alphafix } = require('alphafix');
 
 let imgdata = Buffer.from(new Uint32Array([
   0x00000000, 0x00000000, 0x00000000,
@@ -34,4 +34,20 @@ alphafix({
 // 0xFF00007f, 0xFF0000ff, 0xFF000000,
 // 0xFF000000, 0xFF000000, 0xFF000000,
 
+```
+
+Note: pre-build binares for Win32/Linux included, if they do not work it falls back to a pure-JS implementation.
+
+Additionally native PNG read/write functions are exposed (falls back to pngjs where not available):
+```javascript
+const { pngRead, pngWrite } = require('alphafix');
+
+// Read an image in an object like { width, height, bpp (1-4), data (Buffer) }
+let img = pngRead(fs.readFileSync('file.png'));
+
+// Force image to be in 4-bytes-per-pixel format, regardless of source format
+let img = pngRead(fs.readFileSync('file.png'), { bpp: 4 });
+
+// Write an image from a { width, height, data } object
+fs.writeFileSync('out.png', pngWrite(img));
 ```
