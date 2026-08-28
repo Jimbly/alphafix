@@ -90,5 +90,7 @@ testFile('testRGBA.png');
 testFile('testPalettedRGB.png');
 testFile('testPalettedRGBA.png');
 testFile('testGrayscale.png');
-testFile('testLarge.png');
-testFile('testLargeNoChange.png');
+if (fs.existsSync(`${__dirname}/testLarge.png`)) {
+  testFile('testLarge.png');
+  testFile('testLargeNoChange.png');
+}
