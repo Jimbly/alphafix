@@ -248,7 +248,6 @@ function pngWrite(img) {
 
 function pngRead(buf, opts) {
   assert(buf && (buf instanceof Buffer || buf instanceof Uint8Array));
-  assert.equal(buf.toString('binary', 0, 4), '\x89PNG');
   let force_bpp = 0;
   if (opts) {
     assert.equal(typeof opts, 'object');
@@ -257,7 +256,16 @@ function pngRead(buf, opts) {
       force_bpp = opts.bpp;
     }
   }
-  return pngReadImpl(buf, force_bpp);
+  let header = buf.toString('binary', 0, 4)
+  if (header === '\x89PNG') {
+    return pngReadImpl(buf, force_bpp);
+  } else {
+    if (buf.toString('binary', 6, 10) === 'JFIF') {
+      throw new Error('Invalid header: this is a JPEG file');
+    } else {
+      throw new Error(`Invalid header: "${header}"`);
+    }
+  }
 }
 
 function alphafix(opts) {

@@ -94,3 +94,6 @@ if (fs.existsSync(`${__dirname}/testLarge.png`)) {
   testFile('testLarge.png');
   testFile('testLargeNoChange.png');
 }
+
+// Also run next test
+require('./badreads.js');

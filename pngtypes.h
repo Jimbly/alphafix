@@ -11,6 +11,7 @@ typedef struct GlovImage
 
 GlovImage *pngReadFromMem(const U8 *data, int data_size);
 bool pngWriteToMem(U8 *&data, int &data_size, GlovImage *image);
+const char *pngLastError();
 
 #ifdef _WIN32
 #pragma comment(lib, "../libs/pngWin64.lib")

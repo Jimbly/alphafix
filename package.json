@@ -1,6 +1,6 @@
 {
   "name": "alphafix",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Fix colors in invisible pixels for good texture sampling",
   "main": "index.js",
   "keywords": [
@@ -19,7 +19,8 @@
   "scripts": {
     "install": "true || cd .",
     "build": "prebuildify --napi",
-    "test": "node-gyp configure && node-gyp build && node test/test.js"
+    "test": "node-gyp configure && node-gyp build && node test/test.js",
+    "test-pngreads": "node-gyp configure && node-gyp build && node test/badreads.js"
   },
   "license": "MIT",
   "dependencies": {

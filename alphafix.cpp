@@ -221,6 +221,10 @@ Value pngRead(const CallbackInfo &info) {
   int force_bpp = info[1].As<Number>().Int32Value();
 
   GlovImage *img = pngReadFromMem(data, length);
+  if (!img) {
+    Error::New(env, pngLastError()).ThrowAsJavaScriptException();
+    return env.Null();
+  }
   int numpixels = img->size[0] * img->size[1];
   int bpp = img->bytesPerPixel;
 

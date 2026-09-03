@@ -11,7 +11,7 @@ static void PNGCBAPI pngWarningFn(png_structp, png_const_charp msg) {
     // ignore, happens on Linux only for some reason
     return;
   }
-  printf("%s\n", msg);
+  fprintf(stderr, "%s\n", msg);
 }
 
 typedef struct PngReadStruct {
@@ -29,6 +29,18 @@ static void PNGCBAPI pngReadFunc(png_structp pPng, png_bytep data, png_size_t da
   io_ptr->left -= (int)data_size;
 }
 
+char *png_last_err = NULL;
+
+static void PNGCBAPI pngErrorFn(png_structp png_ptr, png_const_charp error_msg) {
+  // fprintf(stderr, "%s\n", error_msg);
+  if (png_last_err) {
+    free(png_last_err);
+  }
+  png_last_err = strdup(error_msg);
+
+  longjmp(png_jmpbuf(png_ptr), 1);
+}
+
 GlovImage *pngReadShared(std::function<void(png_structp pPng)> setup_io)
 {
   png_structp pPng = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
@@ -36,7 +48,7 @@ GlovImage *pngReadShared(std::function<void(png_structp pPng)> setup_io)
     return NULL;
 
   setup_io(pPng);
-  png_set_error_fn(pPng, NULL, NULL, pngWarningFn);
+  png_set_error_fn(pPng, NULL, pngErrorFn, pngWarningFn);
 
   png_infop pPngInfo = png_create_info_struct(pPng);
   if (!pPngInfo)
@@ -153,6 +165,11 @@ GlovImage *pngReadShared(std::function<void(png_structp pPng)> setup_io)
   }
 
   return ret;
+}
+
+const char *pngLastError()
+{
+  return png_last_err;
 }
 
 GlovImage *pngReadFromMem(const U8 *data, int data_size)
